@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 // Schemas
 import { Project, ProjectSchema } from './schemas/portfolio-project.schema';
@@ -58,6 +59,14 @@ import { AuthModule } from '../auth/auth.module';
         ]),
         PassportModule,
         AuthModule,
+        // ThrottlerModule is needed for PortfolioPublicController which uses ThrottlerGuard
+        // This ensures ThrottlerModule is available whenever PortfolioModule is loaded
+        ThrottlerModule.forRoot([
+            {
+                ttl: 60000, // 1 minute
+                limit: 10, // 10 requests per minute (default)
+            },
+        ]),
     ],
     controllers: [
         PortfolioProjectsController,

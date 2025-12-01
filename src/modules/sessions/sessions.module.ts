@@ -5,14 +5,18 @@ import { Session, SessionSchema } from './schemas/session.schema';
 import { SessionsService } from './sessions.service';
 import { SessionsController } from './sessions.controller';
 import { AuthModule } from '../auth/auth.module';
+import { isApiProcess } from '../../utils/process-type.util';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Session.name, schema: SessionSchema }]),
     PassportModule,
-    forwardRef(() => AuthModule),
+    // Only import AuthModule in API process (needed for SessionsController with JwtAuthGuard)
+    // In scheduler/worker processes, we only need SessionsService for cleanup tasks
+    ...(isApiProcess() ? [forwardRef(() => AuthModule)] : []),
   ],
-  controllers: [SessionsController],
+  // Only load controller in API process (scheduler/worker don't need HTTP endpoints)
+  controllers: isApiProcess() ? [SessionsController] : [],
   providers: [SessionsService],
   exports: [SessionsService],
 })
