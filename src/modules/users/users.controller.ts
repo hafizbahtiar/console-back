@@ -7,16 +7,20 @@ import {
     Body,
     Query,
     UseGuards,
+    UseInterceptors,
+    UploadedFile,
     HttpCode,
     HttpStatus,
     BadRequestException,
     NotFoundException,
     Res,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { UsersService } from './users.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { EmailService } from '../email/services/email.service';
+import { FileUploadService } from '../upload/services/file-upload.service';
 import { ConfigService } from '@nestjs/config';
 import { Config } from '../../config/config.interface';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -29,14 +33,75 @@ import { SuccessResponse } from '../../common/responses/response.interface';
 import { plainToInstance } from 'class-transformer';
 import { convertNestedToCsv } from '../../common/utils/csv.util';
 
+class UpdateAvatarDto {
+    avatar: string;
+}
+
 @Controller('users')
 export class UsersController {
     constructor(
         private readonly usersService: UsersService,
         private readonly accountsService: AccountsService,
         private readonly emailService: EmailService,
+        private readonly fileUploadService: FileUploadService,
         private readonly configService: ConfigService<Config>,
     ) { }
+
+    @Post('profile/avatar')
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @UseInterceptors(FileInterceptor('file'))
+    async uploadAvatar(
+        @GetUser() user: any,
+        @UploadedFile() file: Express.Multer.File,
+        @Body() body?: UpdateAvatarDto, // Optional: support both file upload and URL
+    ): Promise<SuccessResponse<UserResponseDto>> {
+        let avatarUrl: string;
+
+        if (file) {
+            // File upload - process and upload the file
+            const uploadConfig = this.configService.get('upload', { infer: true });
+            const uploaded = await this.fileUploadService.uploadFile(file, {
+                maxSize: uploadConfig?.maxImageSize,
+                allowedMimeTypes: uploadConfig?.allowedImageTypes,
+                destination: 'images',
+                resize: {
+                    width: 400,
+                    height: 400,
+                    quality: 90,
+                },
+            });
+            avatarUrl = uploaded.url;
+        } else if (body?.avatar) {
+            // URL provided - use it directly
+            avatarUrl = body.avatar;
+        } else {
+            throw new BadRequestException('No file or avatar URL provided');
+        }
+
+        const updatedUser = await this.usersService.updateAvatar(user.userId, avatarUrl);
+        const userDoc = updatedUser.toObject ? updatedUser.toObject() : updatedUser;
+        const account = await this.accountsService.findById(user.accountId);
+        const accountDoc = account?.toObject ? account.toObject() : account;
+
+        const userData = {
+            id: userDoc._id.toString(),
+            username: userDoc.username,
+            firstName: userDoc.firstName,
+            lastName: userDoc.lastName,
+            displayName: userDoc.displayName,
+            avatar: userDoc.avatar,
+            role: userDoc.role,
+            email: accountDoc?.email || user.email,
+            emailVerified: accountDoc?.emailVerified ?? true,
+            isActive: userDoc.isActive,
+            createdAt: userDoc.createdAt,
+            updatedAt: userDoc.updatedAt,
+        };
+
+        const userDto = plainToInstance(UserResponseDto, userData);
+        return successResponse(userDto, 'Avatar updated successfully');
+    }
 
     @Patch('profile')
     @UseGuards(JwtAuthGuard)

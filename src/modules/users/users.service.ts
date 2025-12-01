@@ -99,6 +99,18 @@ export class UsersService {
         return updated;
     }
 
+    async updateAvatar(id: string, avatar: string): Promise<UserDocument> {
+        const updated = await this.userModel
+            .findByIdAndUpdate(id, { avatar }, { new: true })
+            .exec();
+
+        if (!updated) {
+            throw new Error('User not found');
+        }
+
+        return updated;
+    }
+
     async delete(id: string): Promise<void> {
         await this.userModel.findByIdAndDelete(id).exec();
     }

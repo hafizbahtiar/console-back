@@ -1,5 +1,5 @@
 import { Module, Logger } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import * as dotenv from 'dotenv';
@@ -16,6 +16,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -80,12 +81,24 @@ const buildImports = () => {
   // Rate Limiting - only needed for API server
   if (isApiProcess()) {
     imports.push(
-      ThrottlerModule.forRoot([
-        {
-          ttl: 60000, // 1 minute
-          limit: 10, // 10 requests per minute
+      ThrottlerModule.forRootAsync({
+        imports: [ConfigModule, RedisModule],
+        inject: [ConfigService, 'REDIS_CLIENT'],
+        useFactory: (configService: ConfigService, redisClient: any) => {
+          const { ThrottlerRedisStorage } = require('./common/storage/throttler-redis.storage');
+          const storage = new ThrottlerRedisStorage(redisClient);
+
+          return {
+            throttlers: [
+              {
+                ttl: 60000, // 1 minute
+                limit: 10, // 10 requests per minute
+              },
+            ],
+            storage,
+          };
         },
-      ]),
+      }),
     );
   }
 
@@ -99,6 +112,7 @@ const buildImports = () => {
       PortfolioModule,
       UploadModule,
       SettingsModule,
+      NotificationsModule,
       // AdminModule already loaded above for both API and Scheduler processes
       WebSocketModule,
     );

@@ -19,6 +19,7 @@ import { PortfolioBlogService } from '../services/portfolio-blog.service';
 import { PortfolioTestimonialsService } from '../services/portfolio-testimonials.service';
 import { PortfolioContactsService } from '../services/portfolio-contacts.service';
 import { PortfolioProfileService } from '../services/portfolio-profile.service';
+import { UsersService } from '../../users/users.service';
 import { ProjectResponseDto } from '../dto/projects/project-response.dto';
 import { CompanyResponseDto } from '../dto/companies/company-response.dto';
 import { SkillResponseDto } from '../dto/skills/skill-response.dto';
@@ -50,6 +51,7 @@ export class PortfolioPublicController {
         private readonly portfolioTestimonialsService: PortfolioTestimonialsService,
         private readonly portfolioContactsService: PortfolioContactsService,
         private readonly portfolioProfileService: PortfolioProfileService,
+        private readonly usersService: UsersService,
     ) { }
 
     /**
@@ -58,9 +60,24 @@ export class PortfolioPublicController {
     @Get('profile/:username')
     @HttpCode(HttpStatus.OK)
     async getPublicProfile(@Param('username') username: string): Promise<PortfolioProfileResponseDto> {
-        // TODO: Get user by username, then get profile
-        // For now, this is a placeholder - need to add username lookup
-        throw new NotFoundException('Public profile endpoint - implementation pending');
+        // Find user by username
+        const user = await this.usersService.findByUsername(username);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        // Get portfolio profile
+        const profile = await this.portfolioProfileService.getByUserId(user._id.toString());
+
+        // Check if portfolio is public
+        if (!profile.isPublic) {
+            throw new NotFoundException('Portfolio is not publicly available');
+        }
+
+        // Return profile as DTO
+        return plainToInstance(PortfolioProfileResponseDto, profile.toObject(), {
+            excludeExtraneousValues: true,
+        });
     }
 
     /**

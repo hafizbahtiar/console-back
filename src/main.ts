@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { IoAdapter } from '@nestjs/platform-socket.io';
@@ -9,6 +10,9 @@ import { AppModule } from './app.module';
 import { Config } from './config/config.interface';
 import { getProcessType, isApiProcess } from './utils/process-type.util';
 import { getHelmetConfig } from './config/helmet.config';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 /**
  * API Server Entry Point
@@ -153,6 +157,15 @@ async function bootstrap() {
 
   logger.log(`🛡️  Security headers configured (${nodeEnv} environment)`);
 
+  // Global Exception Filter - Must be registered before other middleware
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Global Interceptors
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(),
+    new TransformResponseInterceptor(),
+  );
+
   // Global Validation Pipe
   app.useGlobalPipes(
     new ValidationPipe({
@@ -162,6 +175,7 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
+      // Validation errors will be caught and formatted by HttpExceptionFilter
     }),
   );
 

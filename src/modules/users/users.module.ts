@@ -9,6 +9,7 @@ import { AccountsModule } from '../accounts/accounts.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { PortfolioModule } from '../portfolio/portfolio.module';
 import { EmailModule } from '../email/email.module';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
     imports: [
@@ -17,8 +18,9 @@ import { EmailModule } from '../email/email.module';
         forwardRef(() => AuthModule),
         AccountsModule,
         SessionsModule,
-        PortfolioModule,
+        forwardRef(() => PortfolioModule), // forwardRef to avoid circular dependency
         EmailModule,
+        UploadModule, // For file uploads (avatar)
     ],
     controllers: [UsersController],
     providers: [UsersService],

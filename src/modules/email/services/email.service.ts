@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TemplateService } from './template.service';
 import { EmailQueueProducerService } from '../../queue/queues/email/services/email-queue-producer.service';
+import { EmailPreferencesService } from './email-preferences.service';
 import {
     EmailJobData,
     EmailJobType,
@@ -62,6 +63,9 @@ export class EmailService {
         @Optional()
         @Inject(EmailQueueProducerService)
         private readonly emailQueueProducer?: EmailQueueProducerService,
+        @Optional()
+        @Inject(EmailPreferencesService)
+        private readonly emailPreferencesService?: EmailPreferencesService,
     ) {
         // Use queue if producer is available, otherwise fall back to direct sending
         this.useQueue = !!this.emailQueueProducer;
@@ -96,7 +100,21 @@ export class EmailService {
         // This fallback should rarely be used in production
     }
 
-    async sendWelcomeEmail(data: WelcomeEmailData): Promise<void> {
+    async sendWelcomeEmail(data: WelcomeEmailData, userId?: string): Promise<void> {
+        // Check preferences if userId is provided and service is available
+        if (userId && this.emailPreferencesService) {
+            const shouldSend = await this.emailPreferencesService.shouldSendEmail(
+                userId,
+                'accountActivity', // Welcome email is account activity
+            );
+            if (!shouldSend) {
+                this.logger.log(
+                    `Skipping welcome email to ${data.email} - user has disabled account activity emails`,
+                );
+                return;
+            }
+        }
+
         const frontendConfig = this.configService.get('frontend', { infer: true });
         const frontendUrl = frontendConfig?.url || 'http://localhost:3000';
         const verificationUrl = data.verificationToken
@@ -130,7 +148,22 @@ export class EmailService {
         }
     }
 
-    async sendForgotPasswordEmail(data: ForgotPasswordEmailData): Promise<void> {
+    async sendForgotPasswordEmail(data: ForgotPasswordEmailData, userId?: string): Promise<void> {
+        // Security emails (forgot password) should always be sent regardless of preferences
+        // But we can still check if the service is available for logging
+        if (userId && this.emailPreferencesService) {
+            const shouldSend = await this.emailPreferencesService.shouldSendEmail(
+                userId,
+                'securityAlerts',
+            );
+            if (!shouldSend) {
+                this.logger.warn(
+                    `User ${userId} has disabled security alerts, but sending forgot password email anyway (critical security email)`,
+                );
+                // Continue sending - security emails are always sent
+            }
+        }
+
         const html = this.templateService.renderTemplate('forgot-password', {
             name: data.name,
             resetUrl: data.resetUrl,
@@ -161,7 +194,22 @@ export class EmailService {
 
     async sendPasswordChangedEmail(
         data: PasswordChangedEmailData,
+        userId?: string,
     ): Promise<void> {
+        // Check preferences if userId is provided and service is available
+        if (userId && this.emailPreferencesService) {
+            const shouldSend = await this.emailPreferencesService.shouldSendEmail(
+                userId,
+                'accountActivity', // Password changed is account activity
+            );
+            if (!shouldSend) {
+                this.logger.log(
+                    `Skipping password changed email to ${data.email} - user has disabled account activity emails`,
+                );
+                return;
+            }
+        }
+
         const frontendConfig = this.configService.get('frontend', { infer: true });
         const frontendUrl = frontendConfig?.url || 'http://localhost:3000';
         const loginUrl = `${frontendUrl}/login`;
@@ -192,7 +240,21 @@ export class EmailService {
         }
     }
 
-    async sendVerifyEmail(data: VerifyEmailData): Promise<void> {
+    async sendVerifyEmail(data: VerifyEmailData, userId?: string): Promise<void> {
+        // Check preferences if userId is provided and service is available
+        if (userId && this.emailPreferencesService) {
+            const shouldSend = await this.emailPreferencesService.shouldSendEmail(
+                userId,
+                'accountActivity', // Email verification is account activity
+            );
+            if (!shouldSend) {
+                this.logger.log(
+                    `Skipping verify email to ${data.email} - user has disabled account activity emails`,
+                );
+                return;
+            }
+        }
+
         const html = this.templateService.renderTemplate('verify-email', {
             name: data.name,
             verificationUrl: data.verificationUrl,
@@ -221,7 +283,22 @@ export class EmailService {
         }
     }
 
-    async sendAccountDeletionEmail(data: AccountDeletionEmailData): Promise<void> {
+    async sendAccountDeletionEmail(data: AccountDeletionEmailData, userId?: string): Promise<void> {
+        // Security emails (account deletion) should always be sent regardless of preferences
+        // But we can still check if the service is available for logging
+        if (userId && this.emailPreferencesService) {
+            const shouldSend = await this.emailPreferencesService.shouldSendEmail(
+                userId,
+                'securityAlerts',
+            );
+            if (!shouldSend) {
+                this.logger.warn(
+                    `User ${userId} has disabled security alerts, but sending account deletion email anyway (critical security email)`,
+                );
+                // Continue sending - security emails are always sent
+            }
+        }
+
         const html = this.templateService.renderTemplate('account-deletion', {
             name: data.name,
             confirmationToken: data.confirmationToken,

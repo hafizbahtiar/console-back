@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -42,6 +42,10 @@ import { PortfolioProfileService } from './services/portfolio-profile.service';
 
 // Auth Module (for JWT guards)
 import { AuthModule } from '../auth/auth.module';
+// Users Module (for username lookup in public API)
+import { UsersModule } from '../users/users.module';
+// Upload Module (for file uploads)
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
     imports: [
@@ -59,6 +63,8 @@ import { AuthModule } from '../auth/auth.module';
         ]),
         PassportModule,
         AuthModule,
+        UploadModule, // For file uploads (avatar, resume)
+        forwardRef(() => UsersModule), // For username lookup in public API (forwardRef to avoid circular dependency)
         // ThrottlerModule is needed for PortfolioPublicController which uses ThrottlerGuard
         // This ensures ThrottlerModule is available whenever PortfolioModule is loaded
         ThrottlerModule.forRoot([
@@ -106,5 +112,5 @@ import { AuthModule } from '../auth/auth.module';
         PortfolioProfileService,
     ],
 })
-export class PortfolioModule {}
+export class PortfolioModule { }
 
