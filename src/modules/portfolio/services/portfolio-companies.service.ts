@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Company, CompanyDocument } from '../schemas/portfolio-company.schema';
 import { CreateCompanyDto } from '../dto/companies/create-company.dto';
 import { UpdateCompanyDto } from '../dto/companies/update-company.dto';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioCompaniesService {
@@ -70,8 +71,14 @@ export class PortfolioCompaniesService {
     }
 
     async remove(userId: string, id: string): Promise<void> {
-        await this.findOne(userId, id);
-        await this.companyModel.findByIdAndDelete(id).exec();
+        const company = await this.findOne(userId, id);
+        // Soft delete
+        (company as any).deletedAt = new Date();
+        await company.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.companyModel, userId, ids);
     }
 
     async deleteAllByUserId(userId: string): Promise<number> {

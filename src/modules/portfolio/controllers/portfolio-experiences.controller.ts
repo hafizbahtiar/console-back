@@ -15,6 +15,7 @@ import { PortfolioExperiencesService } from '../services/portfolio-experiences.s
 import { CreateExperienceDto } from '../dto/experiences/create-experience.dto';
 import { UpdateExperienceDto } from '../dto/experiences/update-experience.dto';
 import { ExperienceResponseDto } from '../dto/experiences/experience-response.dto';
+import { BulkDeleteExperienceDto } from '../dto/experiences/bulk-delete-experience.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -30,7 +31,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @Controller('portfolio/experiences')
 @UseGuards(JwtAuthGuard)
 export class PortfolioExperiencesController {
-    constructor(private readonly portfolioExperiencesService: PortfolioExperiencesService) {}
+    constructor(private readonly portfolioExperiencesService: PortfolioExperiencesService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -90,6 +91,16 @@ export class PortfolioExperiencesController {
             excludeExtraneousValues: true,
         });
         return successResponse(experienceDto, 'Experience updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteExperienceDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioExperiencesService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} experience(s)`);
     }
 
     @Delete(':id')

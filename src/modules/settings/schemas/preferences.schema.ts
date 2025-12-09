@@ -5,7 +5,7 @@ export type PreferencesDocument = Preferences & Document;
 
 @Schema({ timestamps: true })
 export class Preferences {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true })
   userId: Types.ObjectId;
 
   // Appearance preferences
@@ -51,6 +51,6 @@ export class Preferences {
 
 export const PreferencesSchema = SchemaFactory.createForClass(Preferences);
 
-// Index for faster lookups
-PreferencesSchema.index({ userId: 1 });
+// Indexes
+// Note: userId unique index is created by unique: true in @Prop decorator
 

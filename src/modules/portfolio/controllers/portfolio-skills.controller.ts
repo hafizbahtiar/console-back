@@ -15,6 +15,7 @@ import { PortfolioSkillsService } from '../services/portfolio-skills.service';
 import { CreateSkillDto } from '../dto/skills/create-skill.dto';
 import { UpdateSkillDto } from '../dto/skills/update-skill.dto';
 import { SkillResponseDto } from '../dto/skills/skill-response.dto';
+import { BulkDeleteSkillDto } from '../dto/skills/bulk-delete-skill.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -28,7 +29,7 @@ import { SuccessResponse } from '../../../common/responses/response.interface';
 @Controller('portfolio/skills')
 @UseGuards(JwtAuthGuard)
 export class PortfolioSkillsController {
-    constructor(private readonly portfolioSkillsService: PortfolioSkillsService) {}
+    constructor(private readonly portfolioSkillsService: PortfolioSkillsService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -93,6 +94,16 @@ export class PortfolioSkillsController {
             excludeExtraneousValues: true,
         });
         return successResponse(skillDto, 'Skill updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteSkillDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioSkillsService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} skill(s)`);
     }
 
     @Delete(':id')

@@ -5,7 +5,7 @@ export type NotificationPreferencesDocument = NotificationPreferences & Document
 
 @Schema({ timestamps: true })
 export class NotificationPreferences {
-    @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true, index: true })
+    @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true })
     userId: Types.ObjectId;
 
     // Email notification preferences
@@ -45,5 +45,5 @@ export class NotificationPreferences {
 export const NotificationPreferencesSchema = SchemaFactory.createForClass(NotificationPreferences);
 
 // Indexes
-NotificationPreferencesSchema.index({ userId: 1 }, { unique: true });
+// Note: userId unique index is created by unique: true in @Prop decorator
 

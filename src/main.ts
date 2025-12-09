@@ -13,6 +13,11 @@ import { getHelmetConfig } from './config/helmet.config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { BullBoardService } from './modules/admin/services/bull-board.service';
+import { AdminModule } from './modules/admin/admin.module';
+
+// Global app reference for services (set after creation)
+let globalApp: NestExpressApplication | undefined;
 
 /**
  * API Server Entry Point
@@ -41,6 +46,11 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['log', 'error', 'warn', 'debug', 'verbose'],
   });
+
+  globalThis.globalApp = app;
+
+  // Initialize the app to run all onModuleInit hooks (ensures services like BullBoardService are setup)
+  await app.init();
 
   const configService = app.get(ConfigService<Config>);
 
@@ -157,6 +167,10 @@ async function bootstrap() {
 
   logger.log(`🛡️  Security headers configured (${nodeEnv} environment)`);
 
+  // Mount Bull Board as middleware (now safe after init)
+  const bullBoardRouter = app.get(BullBoardService).getRouter();
+  app.use('/api/v1/admin/queues/ui', bullBoardRouter);
+
   // Global Exception Filter - Must be registered before other middleware
   app.useGlobalFilters(new HttpExceptionFilter());
 
@@ -192,7 +206,7 @@ async function bootstrap() {
     logger.log(`📁 Serving static files from: ${uploadsPath}`);
   }
 
-  const port = configService.get('port', { infer: true }) || 3000;
+  const port = configService.get('port', { infer: true }) || 8000;  // Set to 8000 to match frontend
   await app.listen(port);
 
   logger.log(`🚀 Application is running on: http://localhost:${port}`);

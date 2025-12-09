@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { EmailService } from './services/email.service';
 import { TemplateService } from './services/template.service';
@@ -11,9 +11,9 @@ import { EmailPreferencesController } from './controllers/email-preferences.cont
 @Module({
     imports: [
         EmailQueueModule,
-        NotificationsModule, // For NotificationPreferencesService
+        forwardRef(() => NotificationsModule), // Use forwardRef to break circular dependency with AuthModule
         PassportModule,
-        AuthModule, // For JwtAuthGuard
+        forwardRef(() => AuthModule), // Use forwardRef to break circular dependency
     ],
     providers: [EmailService, TemplateService, EmailPreferencesService],
     controllers: [EmailPreferencesController],

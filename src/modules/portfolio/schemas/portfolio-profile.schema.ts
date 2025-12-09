@@ -5,7 +5,7 @@ export type PortfolioProfileDocument = PortfolioProfile & Document;
 
 @Schema({ timestamps: true })
 export class PortfolioProfile {
-    @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true, index: true })
+    @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true })
     userId: Types.ObjectId;
 
     @Prop({ trim: true })
@@ -63,8 +63,8 @@ export class PortfolioProfile {
 export const PortfolioProfileSchema = SchemaFactory.createForClass(PortfolioProfile);
 
 // Indexes
-PortfolioProfileSchema.index({ userId: 1 }, { unique: true });
+// Note: userId unique index is created by unique: true in @Prop decorator
 PortfolioProfileSchema.index({ userId: 1, deletedAt: 1 }); // Compound index for common query pattern
 PortfolioProfileSchema.index({ isPublic: 1 }); // For public portfolio queries
-PortfolioProfileSchema.index({ deletedAt: 1 });
+// Note: deletedAt index is created by softDeletePlugin (if plugin is applied)
 

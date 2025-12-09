@@ -15,6 +15,7 @@ import { PortfolioContactsService } from '../services/portfolio-contacts.service
 import { CreateContactDto } from '../dto/contacts/create-contact.dto';
 import { UpdateContactDto } from '../dto/contacts/update-contact.dto';
 import { ContactResponseDto } from '../dto/contacts/contact-response.dto';
+import { BulkDeleteContactDto } from '../dto/contacts/bulk-delete-contact.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -30,7 +31,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @Controller('portfolio/contacts')
 @UseGuards(JwtAuthGuard)
 export class PortfolioContactsController {
-    constructor(private readonly portfolioContactsService: PortfolioContactsService) {}
+    constructor(private readonly portfolioContactsService: PortfolioContactsService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -92,6 +93,16 @@ export class PortfolioContactsController {
             excludeExtraneousValues: true,
         });
         return successResponse(contactDto, 'Contact link updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteContactDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioContactsService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} contact link(s)`);
     }
 
     @Delete(':id')

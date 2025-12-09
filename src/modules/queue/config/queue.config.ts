@@ -27,8 +27,9 @@ export function getBullRedisConfig(
             const delay = Math.min(times * 100, 3000);
             return delay;
         },
-        maxRetriesPerRequest: redisConfig.maxRetriesPerRequest,
-        enableReadyCheck: redisConfig.enableReadyCheck,
+        // Note: maxRetriesPerRequest and enableReadyCheck are NOT allowed for Bull's internal Redis clients
+        // Bull uses separate bclient/subscriber connections that don't support these options
+        // See: https://github.com/OptimalBits/bull/issues/1873
         enableOfflineQueue: redisConfig.enableOfflineQueue,
     };
 }

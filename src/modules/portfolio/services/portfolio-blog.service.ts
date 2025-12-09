@@ -5,6 +5,7 @@ import { Blog, BlogDocument } from '../schemas/portfolio-blog.schema';
 import { CreateBlogDto } from '../dto/blog/create-blog.dto';
 import { UpdateBlogDto } from '../dto/blog/update-blog.dto';
 import { generateSlug, generateUniqueSlug } from '../util/portfolio-blog.util';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioBlogService {
@@ -111,8 +112,14 @@ export class PortfolioBlogService {
     }
 
     async remove(userId: string, id: string): Promise<void> {
-        await this.findOne(userId, id);
-        await this.blogModel.findByIdAndDelete(id).exec();
+        const blog = await this.findOne(userId, id);
+        // Soft delete
+        (blog as any).deletedAt = new Date();
+        await blog.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.blogModel, userId, ids);
     }
 
     async publish(userId: string, id: string, published: boolean): Promise<BlogDocument> {

@@ -22,6 +22,7 @@ import { QueueModule } from './modules/queue/queue.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { WebSocketModule } from './modules/websocket/websocket.module';
+import { FinanceModule } from './modules/finance/finance.module';
 import { getProcessType, isApiProcess, isWorkerProcess, isSchedulerProcess } from './utils/process-type.util';
 
 // Load .env file manually before ConfigModule (ensures it's available)
@@ -92,7 +93,7 @@ const buildImports = () => {
             throttlers: [
               {
                 ttl: 60000, // 1 minute
-                limit: 10, // 10 requests per minute
+                limit: 120, // allow up to 120 requests/min (SPA-friendly)
               },
             ],
             storage,
@@ -113,6 +114,7 @@ const buildImports = () => {
       UploadModule,
       SettingsModule,
       NotificationsModule,
+      FinanceModule, // Owner-only finance management
       // AdminModule already loaded above for both API and Scheduler processes
       WebSocketModule,
     );

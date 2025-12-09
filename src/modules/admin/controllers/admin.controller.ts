@@ -7,6 +7,9 @@ import { QueueNames } from '../../queue/constants/queue-names.constant';
 import { BullBoardService } from '../services/bull-board.service';
 import { CronJobTrackerService } from '../services/cron-job-tracker.service';
 import { MetricsService } from '../services/metrics.service';
+import { RedisService } from '../../redis/services/redis.service';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { successResponse } from '../../../common/responses/response.util';
 
 /**
@@ -25,6 +28,9 @@ export class AdminController {
         private readonly bullBoardService: BullBoardService,
         private readonly cronJobTracker: CronJobTrackerService,
         private readonly metricsService: MetricsService,
+        private readonly redisService: RedisService,
+        @InjectConnection()
+        private readonly mongooseConnection: Connection,
     ) { }
 
     /**
@@ -324,6 +330,78 @@ export class AdminController {
                 total: history.length,
             },
             'Cron job execution history retrieved successfully',
+        );
+    }
+
+    /**
+     * Get system health status
+     * GET /api/v1/admin/health
+     */
+    @Get('health')
+    async getSystemHealth() {
+        const timestamp = new Date().toISOString();
+
+        // Check Redis health
+        let redisHealth: any;
+        try {
+            const redisInfo = await this.redisService.getInfo();
+            const isHealthy = await this.redisService.isHealthy();
+            redisHealth = {
+                status: isHealthy ? 'healthy' : (redisInfo.connected ? 'warning' : 'error'),
+                message: isHealthy ? 'Redis is healthy' : (redisInfo.connected ? 'Redis connected but unhealthy' : 'Redis is not connected'),
+                timestamp,
+                connected: redisInfo.connected,
+                healthy: isHealthy,
+                host: redisInfo.host,
+                port: redisInfo.port,
+            };
+        } catch (error) {
+            redisHealth = {
+                status: 'error',
+                message: 'Redis health check failed',
+                timestamp,
+                connected: false,
+                healthy: false,
+            };
+        }
+
+        // Check MongoDB health
+        let mongodbHealth: any;
+        try {
+            const connectionState = this.mongooseConnection.readyState;
+            const connected = connectionState === 1; // 1 = connected
+            const dbName = this.mongooseConnection.name || 'unknown';
+
+            mongodbHealth = {
+                status: connected ? 'healthy' : 'error',
+                message: connected ? `MongoDB connected to ${dbName}` : 'MongoDB is not connected',
+                timestamp,
+                connected,
+                database: connected ? dbName : undefined,
+            };
+        } catch (error) {
+            mongodbHealth = {
+                status: 'error',
+                message: 'MongoDB health check failed',
+                timestamp,
+                connected: false,
+            };
+        }
+
+        // API is healthy if we can respond
+        const apiHealth = {
+            status: 'healthy' as const,
+            message: 'API server is responding',
+            timestamp,
+        };
+
+        return successResponse(
+            {
+                api: apiHealth,
+                redis: redisHealth,
+                mongodb: mongodbHealth,
+            },
+            'System health retrieved successfully',
         );
     }
 

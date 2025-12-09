@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Experience, ExperienceDocument } from '../schemas/portfolio-experience.schema';
 import { CreateExperienceDto } from '../dto/experiences/create-experience.dto';
 import { UpdateExperienceDto } from '../dto/experiences/update-experience.dto';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioExperiencesService {
@@ -155,6 +156,10 @@ export class PortfolioExperiencesService {
         // Soft delete
         (experience as any).deletedAt = new Date();
         await experience.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.experienceModel, userId, ids);
     }
 
     async deleteAllByUserId(userId: string): Promise<number> {

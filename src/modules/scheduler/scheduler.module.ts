@@ -6,6 +6,7 @@ import { SessionsModule } from '../sessions/sessions.module';
 import { AccountsModule } from '../accounts/accounts.module';
 import { EmailQueueModule } from '../queue/queues/email/email-queue.module';
 import { AdminModule } from '../admin/admin.module';
+import { FinanceModule } from '../finance/finance.module';
 
 /**
  * Scheduler Module
@@ -22,6 +23,7 @@ import { AdminModule } from '../admin/admin.module';
         SessionsModule,
         AccountsModule,
         EmailQueueModule,
+        FinanceModule,
         // Import AdminModule to access CronJobTrackerService
         forwardRef(() => AdminModule),
     ],

@@ -16,6 +16,7 @@ import { PortfolioProjectsService } from '../services/portfolio-projects.service
 import { CreateProjectDto } from '../dto/projects/create-project.dto';
 import { UpdateProjectDto } from '../dto/projects/update-project.dto';
 import { ProjectResponseDto } from '../dto/projects/project-response.dto';
+import { BulkDeleteProjectDto } from '../dto/projects/bulk-delete-project.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -32,7 +33,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @UseGuards(JwtAuthGuard)
 @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute for portfolio endpoints
 export class PortfolioProjectsController {
-    constructor(private readonly portfolioProjectsService: PortfolioProjectsService) {}
+    constructor(private readonly portfolioProjectsService: PortfolioProjectsService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -94,6 +95,16 @@ export class PortfolioProjectsController {
             excludeExtraneousValues: true,
         });
         return successResponse(projectDto, 'Project updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteProjectDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioProjectsService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} project(s)`);
     }
 
     @Delete(':id')

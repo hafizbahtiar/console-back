@@ -15,6 +15,7 @@ import { PortfolioTestimonialsService } from '../services/portfolio-testimonials
 import { CreateTestimonialDto } from '../dto/testimonials/create-testimonial.dto';
 import { UpdateTestimonialDto } from '../dto/testimonials/update-testimonial.dto';
 import { TestimonialResponseDto } from '../dto/testimonials/testimonial-response.dto';
+import { BulkDeleteTestimonialDto } from '../dto/testimonials/bulk-delete-testimonial.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -30,7 +31,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @Controller('portfolio/testimonials')
 @UseGuards(JwtAuthGuard)
 export class PortfolioTestimonialsController {
-    constructor(private readonly portfolioTestimonialsService: PortfolioTestimonialsService) {}
+    constructor(private readonly portfolioTestimonialsService: PortfolioTestimonialsService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -90,6 +91,16 @@ export class PortfolioTestimonialsController {
             excludeExtraneousValues: true,
         });
         return successResponse(testimonialDto, 'Testimonial updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteTestimonialDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioTestimonialsService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} testimonial(s)`);
     }
 
     @Delete(':id')

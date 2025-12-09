@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Skill, SkillDocument } from '../schemas/portfolio-skill.schema';
 import { CreateSkillDto } from '../dto/skills/create-skill.dto';
 import { UpdateSkillDto } from '../dto/skills/update-skill.dto';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioSkillsService {
@@ -65,8 +66,14 @@ export class PortfolioSkillsService {
     }
 
     async remove(userId: string, id: string): Promise<void> {
-        await this.findOne(userId, id);
-        await this.skillModel.findByIdAndDelete(id).exec();
+        const skill = await this.findOne(userId, id);
+        // Soft delete
+        (skill as any).deletedAt = new Date();
+        await skill.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.skillModel, userId, ids);
     }
 
     async reorder(userId: string, skillIds: string[]): Promise<void> {

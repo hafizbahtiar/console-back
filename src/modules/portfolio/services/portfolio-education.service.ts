@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Education, EducationDocument } from '../schemas/portfolio-education.schema';
 import { CreateEducationDto } from '../dto/education/create-education.dto';
 import { UpdateEducationDto } from '../dto/education/update-education.dto';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioEducationService {
@@ -99,8 +100,14 @@ export class PortfolioEducationService {
     }
 
     async remove(userId: string, id: string): Promise<void> {
-        await this.findOne(userId, id);
-        await this.educationModel.findByIdAndDelete(id).exec();
+        const education = await this.findOne(userId, id);
+        // Soft delete
+        (education as any).deletedAt = new Date();
+        await education.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.educationModel, userId, ids);
     }
 
     async deleteAllByUserId(userId: string): Promise<number> {

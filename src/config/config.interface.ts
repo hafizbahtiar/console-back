@@ -72,5 +72,19 @@ export interface Config {
         databaseMaintenance?: {
             enabled?: boolean;
         };
+        recurringTransactionGeneration?: {
+            enabled?: boolean;
+        };
+    };
+    ocr?: {
+        enabled: boolean;
+        language: string;
+        preprocessing?: {
+            resizeWidth?: number;
+            grayscale?: boolean;
+            normalize?: boolean;
+            sharpen?: boolean;
+            threshold?: number;
+        };
     };
 }

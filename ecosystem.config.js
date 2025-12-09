@@ -2,15 +2,16 @@
  * PM2 Ecosystem Configuration
  * 
  * Manages multiple processes:
- * - API Server (cluster mode, multiple instances)
+ * - API Server (cluster mode in prod, fork in dev)
  * - Worker Process (fork mode, single instance)
  * - Scheduler Process (fork mode, single instance)
  * 
  * Usage:
- *   pm2 start ecosystem.config.js          # Start all processes
- *   pm2 start ecosystem.config.js --only api    # Start only API
- *   pm2 start ecosystem.config.js --only worker # Start only worker
- *   pm2 start ecosystem.config.js --only scheduler # Start only scheduler
+ *   pm2 start ecosystem.config.js          # Start all processes (uses NODE_ENV to determine mode)
+ *   pm2 start ecosystem.config.js --only console-api    # Start only API (cluster in prod, single in dev)
+ *   pm2 start ecosystem.config.js --only console-api-dev # Start dev API (single instance, watch enabled, on port 8001)
+ *   pm2 start ecosystem.config.js --only console-worker # Start only worker
+ *   pm2 start ecosystem.config.js --only console-scheduler # Start only scheduler
  *   pm2 stop all                            # Stop all processes
  *   pm2 restart all                         # Restart all processes
  *   pm2 logs                                # View all logs
@@ -22,8 +23,12 @@ module.exports = {
         {
             name: 'console-api',
             script: './dist/main.js',
-            instances: 'max', // Use all available CPU cores
-            exec_mode: 'cluster',
+            // Conditional: 'max' in prod, 1 in dev
+            instances: process.env.NODE_ENV === 'production' ? 'max' : 1,
+            exec_mode: process.env.NODE_ENV === 'production' ? 'cluster' : 'fork',
+            // Enable watch in non-prod
+            watch: process.env.NODE_ENV !== 'production',
+            ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
             env: {
                 NODE_ENV: 'production',
                 PROCESS_TYPE: 'api',
@@ -34,27 +39,24 @@ module.exports = {
                 PROCESS_TYPE: 'api',
                 PORT: 8000,
             },
-            // Logging configuration
+            // Logging configuration with rotation
             error_file: './logs/api-error.log',
             out_file: './logs/api-out.log',
             log_file: './logs/api-combined.log',
             time: true,
             log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
             merge_logs: true,
-
-            // Restart policy
+            rotateModule: true,
+            rotateInterval: '0 0 * * *', // Daily at midnight
+            max_size: '100M',
+            // Restart policy with exponential backoff (initial delay 100ms)
             autorestart: true,
             max_restarts: 10,
-            min_uptime: '10s',
+            min_uptime: '30s',
             restart_delay: 4000,
-
+            exp_backoff_restart_delay: 100,
             // Memory limits
             max_memory_restart: '1G',
-
-            // Watch mode (development only)
-            watch: false,
-            ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
-
             // Advanced options
             kill_timeout: 5000,
             wait_ready: true,
@@ -73,27 +75,27 @@ module.exports = {
                 NODE_ENV: 'development',
                 PROCESS_TYPE: 'worker',
             },
-            // Logging configuration
+            // Logging configuration with rotation
             error_file: './logs/worker-error.log',
             out_file: './logs/worker-out.log',
             log_file: './logs/worker-combined.log',
             time: true,
             log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
             merge_logs: true,
-
-            // Restart policy
+            rotateModule: true,
+            rotateInterval: '0 0 * * *',
+            max_size: '100M',
+            // Restart policy with exponential backoff (initial delay 100ms)
             autorestart: true,
             max_restarts: 10,
-            min_uptime: '10s',
+            min_uptime: '30s',
             restart_delay: 4000,
-
+            exp_backoff_restart_delay: 100,
             // Memory limits
             max_memory_restart: '1G',
-
             // Watch mode (development only)
-            watch: false,
+            watch: process.env.NODE_ENV !== 'production',
             ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
-
             // Advanced options
             kill_timeout: 5000,
         },
@@ -110,27 +112,27 @@ module.exports = {
                 NODE_ENV: 'development',
                 PROCESS_TYPE: 'scheduler',
             },
-            // Logging configuration
+            // Logging configuration with rotation
             error_file: './logs/scheduler-error.log',
             out_file: './logs/scheduler-out.log',
             log_file: './logs/scheduler-combined.log',
             time: true,
             log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
             merge_logs: true,
-
-            // Restart policy
+            rotateModule: true,
+            rotateInterval: '0 0 * * *',
+            max_size: '100M',
+            // Restart policy with exponential backoff (initial delay 100ms)
             autorestart: true,
             max_restarts: 10,
-            min_uptime: '10s',
+            min_uptime: '30s',
             restart_delay: 4000,
-
+            exp_backoff_restart_delay: 100,
             // Memory limits
             max_memory_restart: '512M',
-
             // Watch mode (development only)
-            watch: false,
+            watch: process.env.NODE_ENV !== 'production',
             ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
-
             // Advanced options
             kill_timeout: 5000,
         },

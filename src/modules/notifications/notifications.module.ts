@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
 import { NotificationPreferences, NotificationPreferencesSchema } from './schemas/notification-preferences.schema';
@@ -12,7 +12,7 @@ import { AuthModule } from '../auth/auth.module';
             { name: NotificationPreferences.name, schema: NotificationPreferencesSchema },
         ]),
         PassportModule,
-        AuthModule,
+        forwardRef(() => AuthModule), // Use forwardRef to break circular dependency with EmailModule
     ],
     controllers: [NotificationsController],
     providers: [NotificationPreferencesService],

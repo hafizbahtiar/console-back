@@ -40,6 +40,13 @@ export class User {
 
   @Prop({ type: Object, required: false })
   metadata?: Record<string, any>;
+
+  // Currency preferences
+  @Prop({ type: String, default: 'MYR', uppercase: true, maxlength: 3 })
+  baseCurrency?: string; // User's base currency (default: 'MYR')
+
+  @Prop({ type: [String], default: ['MYR'] })
+  supportedCurrencies?: string[]; // List of currencies user wants to work with (default: ['MYR'])
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

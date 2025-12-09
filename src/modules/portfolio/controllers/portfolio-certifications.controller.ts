@@ -15,6 +15,7 @@ import { PortfolioCertificationsService } from '../services/portfolio-certificat
 import { CreateCertificationDto } from '../dto/certifications/create-certification.dto';
 import { UpdateCertificationDto } from '../dto/certifications/update-certification.dto';
 import { CertificationResponseDto } from '../dto/certifications/certification-response.dto';
+import { BulkDeleteCertificationDto } from '../dto/certifications/bulk-delete-certification.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -30,7 +31,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @Controller('portfolio/certifications')
 @UseGuards(JwtAuthGuard)
 export class PortfolioCertificationsController {
-    constructor(private readonly portfolioCertificationsService: PortfolioCertificationsService) {}
+    constructor(private readonly portfolioCertificationsService: PortfolioCertificationsService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -90,6 +91,16 @@ export class PortfolioCertificationsController {
             excludeExtraneousValues: true,
         });
         return successResponse(certificationDto, 'Certification updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteCertificationDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioCertificationsService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} certification(s)`);
     }
 
     @Delete(':id')

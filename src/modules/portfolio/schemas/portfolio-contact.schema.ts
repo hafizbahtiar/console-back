@@ -1,12 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { softDeletePlugin } from '../util/soft-delete.plugin';
+import { softDeletePlugin } from '../../../common/utils/soft-delete.plugin';
 
 export type ContactDocument = Contact & Document;
 
 @Schema({ timestamps: true })
 export class Contact {
-    @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+    @Prop({ type: Types.ObjectId, ref: 'User', required: true })
     userId: Types.ObjectId;
 
     @Prop({ required: true, trim: true })
@@ -34,5 +34,5 @@ ContactSchema.plugin(softDeletePlugin);
 ContactSchema.index({ userId: 1, active: 1, order: 1 });
 ContactSchema.index({ userId: 1, order: 1 });
 ContactSchema.index({ userId: 1, deletedAt: 1 }); // Compound index for common query pattern
-ContactSchema.index({ deletedAt: 1 });
+// Note: deletedAt index is created by softDeletePlugin
 

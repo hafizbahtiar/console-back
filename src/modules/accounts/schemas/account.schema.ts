@@ -10,10 +10,9 @@ export class Account {
 
     @Prop({
         required: true,
-        unique: true,
+        unique: true, // unique: true automatically creates an index
         lowercase: true,
         trim: true,
-        index: true,
     })
     email: string;
 
@@ -56,7 +55,9 @@ export class Account {
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
 
-// Indexes (email and userId already indexed via unique: true and index: true in @Prop)
+// Indexes
+// Note: email unique index is created by unique: true in @Prop decorator
+// Note: userId index is created by index: true in @Prop decorator
 AccountSchema.index({ emailVerificationToken: 1 });
 AccountSchema.index({ passwordResetToken: 1 });
 AccountSchema.index({ accountDeletionToken: 1 });

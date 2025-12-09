@@ -98,6 +98,17 @@ export default () => {
             storagePath: process.env.UPLOAD_STORAGE_PATH || 'uploads',
             publicUrl: process.env.UPLOAD_PUBLIC_URL || 'http://localhost:8000/api/v1/uploads',
         },
+        ocr: {
+            enabled: process.env.OCR_ENABLED !== 'false', // Default: true
+            language: process.env.OCR_LANGUAGE || 'eng', // Default: English
+            preprocessing: {
+                resizeWidth: parseInt(process.env.OCR_RESIZE_WIDTH || '2000', 10), // Default: 2000px
+                grayscale: process.env.OCR_GRAYSCALE !== 'false', // Default: true
+                normalize: process.env.OCR_NORMALIZE !== 'false', // Default: true
+                sharpen: process.env.OCR_SHARPEN !== 'false', // Default: true
+                threshold: parseInt(process.env.OCR_THRESHOLD || '128', 10), // Default: 128 (for binarization)
+            },
+        },
         location: {
             enabled: process.env.LOCATION_ENABLED !== 'false', // Default: true
             apiUrl: process.env.LOCATION_API_URL || 'http://ip-api.com/json',
@@ -128,6 +139,9 @@ export default () => {
             },
             databaseMaintenance: {
                 enabled: process.env.SCHEDULER_DATABASE_MAINTENANCE_ENABLED === 'true', // Default: false
+            },
+            recurringTransactionGeneration: {
+                enabled: process.env.SCHEDULER_RECURRING_TRANSACTION_GENERATION_ENABLED !== 'false', // Default: true
             },
         },
     };

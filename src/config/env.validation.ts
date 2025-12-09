@@ -86,6 +86,43 @@ class EnvironmentVariables {
     @IsOptional()
     UPLOAD_PUBLIC_URL?: string;
 
+    // OCR Configuration
+    @IsString()
+    @IsOptional()
+    @IsIn(['true', 'false'])
+    OCR_ENABLED?: string;
+
+    @IsString()
+    @IsOptional()
+    OCR_LANGUAGE?: string;
+
+    @IsNumber()
+    @Min(500)
+    @Max(5000)
+    @IsOptional()
+    OCR_RESIZE_WIDTH?: number;
+
+    @IsString()
+    @IsOptional()
+    @IsIn(['true', 'false'])
+    OCR_GRAYSCALE?: string;
+
+    @IsString()
+    @IsOptional()
+    @IsIn(['true', 'false'])
+    OCR_NORMALIZE?: string;
+
+    @IsString()
+    @IsOptional()
+    @IsIn(['true', 'false'])
+    OCR_SHARPEN?: string;
+
+    @IsNumber()
+    @Min(0)
+    @Max(255)
+    @IsOptional()
+    OCR_THRESHOLD?: number;
+
     // CORS Configuration (CORS_ORIGIN already defined above)
     @IsString()
     @IsOptional()

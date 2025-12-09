@@ -11,6 +11,8 @@ import { SessionsModule } from '../sessions/sessions.module';
 import { EmailModule } from '../email/email.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OwnerOnlyGuard } from './guards/owner-only.guard';
 
 @Module({
   imports: [
@@ -28,10 +30,10 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
     forwardRef(() => UsersModule),
     AccountsModule,
     forwardRef(() => SessionsModule),
-    EmailModule,
+    forwardRef(() => EmailModule), // Use forwardRef to break circular dependency with NotificationsModule
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
-  exports: [AuthService, JwtStrategy, JwtRefreshStrategy, PassportModule, JwtModule],
+  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, JwtAuthGuard, OwnerOnlyGuard],
+  exports: [AuthService, JwtStrategy, JwtRefreshStrategy, PassportModule, JwtModule, JwtAuthGuard, OwnerOnlyGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

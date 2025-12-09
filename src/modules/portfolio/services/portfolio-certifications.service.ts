@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Certification, CertificationDocument } from '../schemas/portfolio-certification.schema';
 import { CreateCertificationDto } from '../dto/certifications/create-certification.dto';
 import { UpdateCertificationDto } from '../dto/certifications/update-certification.dto';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioCertificationsService {
@@ -99,8 +100,14 @@ export class PortfolioCertificationsService {
     }
 
     async remove(userId: string, id: string): Promise<void> {
-        await this.findOne(userId, id);
-        await this.certificationModel.findByIdAndDelete(id).exec();
+        const certification = await this.findOne(userId, id);
+        // Soft delete
+        (certification as any).deletedAt = new Date();
+        await certification.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.certificationModel, userId, ids);
     }
 
     async deleteAllByUserId(userId: string): Promise<number> {

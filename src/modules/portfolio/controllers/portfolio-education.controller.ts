@@ -15,6 +15,7 @@ import { PortfolioEducationService } from '../services/portfolio-education.servi
 import { CreateEducationDto } from '../dto/education/create-education.dto';
 import { UpdateEducationDto } from '../dto/education/update-education.dto';
 import { EducationResponseDto } from '../dto/education/education-response.dto';
+import { BulkDeleteEducationDto } from '../dto/education/bulk-delete-education.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -30,7 +31,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @Controller('portfolio/education')
 @UseGuards(JwtAuthGuard)
 export class PortfolioEducationController {
-    constructor(private readonly portfolioEducationService: PortfolioEducationService) {}
+    constructor(private readonly portfolioEducationService: PortfolioEducationService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -90,6 +91,16 @@ export class PortfolioEducationController {
             excludeExtraneousValues: true,
         });
         return successResponse(educationDto, 'Education entry updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteEducationDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioEducationService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} education entry(ies)`);
     }
 
     @Delete(':id')

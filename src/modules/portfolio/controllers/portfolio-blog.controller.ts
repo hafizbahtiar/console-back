@@ -15,6 +15,7 @@ import { PortfolioBlogService } from '../services/portfolio-blog.service';
 import { CreateBlogDto } from '../dto/blog/create-blog.dto';
 import { UpdateBlogDto } from '../dto/blog/update-blog.dto';
 import { BlogResponseDto } from '../dto/blog/blog-response.dto';
+import { BulkDeleteBlogDto } from '../dto/blog/bulk-delete-blog.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -30,7 +31,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @Controller('portfolio/blog')
 @UseGuards(JwtAuthGuard)
 export class PortfolioBlogController {
-    constructor(private readonly portfolioBlogService: PortfolioBlogService) {}
+    constructor(private readonly portfolioBlogService: PortfolioBlogService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -92,6 +93,16 @@ export class PortfolioBlogController {
             excludeExtraneousValues: true,
         });
         return successResponse(blogDto, 'Blog post updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteBlogDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioBlogService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} blog post(s)`);
     }
 
     @Delete(':id')

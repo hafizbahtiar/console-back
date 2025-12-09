@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Testimonial, TestimonialDocument } from '../schemas/portfolio-testimonial.schema';
 import { CreateTestimonialDto } from '../dto/testimonials/create-testimonial.dto';
 import { UpdateTestimonialDto } from '../dto/testimonials/update-testimonial.dto';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioTestimonialsService {
@@ -70,8 +71,14 @@ export class PortfolioTestimonialsService {
     }
 
     async remove(userId: string, id: string): Promise<void> {
-        await this.findOne(userId, id);
-        await this.testimonialModel.findByIdAndDelete(id).exec();
+        const testimonial = await this.findOne(userId, id);
+        // Soft delete
+        (testimonial as any).deletedAt = new Date();
+        await testimonial.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.testimonialModel, userId, ids);
     }
 
     async reorder(userId: string, testimonialIds: string[]): Promise<void> {

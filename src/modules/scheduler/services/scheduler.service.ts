@@ -5,6 +5,7 @@ import { SessionsService } from '../../sessions/sessions.service';
 import { AccountsService } from '../../accounts/accounts.service';
 import { EmailQueueProducerService } from '../../queue/queues/email/services/email-queue-producer.service';
 import { CronJobTrackerService } from '../../admin/services/cron-job-tracker.service';
+import { FinanceRecurringTransactionsService } from '../../finance/services/finance-recurring-transactions.service';
 import { Config } from '../../../config/config.interface';
 
 /**
@@ -41,6 +42,7 @@ export class SchedulerService {
         private readonly sessionsService: SessionsService,
         private readonly accountsService: AccountsService,
         private readonly emailQueueProducer: EmailQueueProducerService,
+        private readonly financeRecurringTransactionsService: FinanceRecurringTransactionsService,
         @Inject(forwardRef(() => CronJobTrackerService))
         private readonly cronJobTracker?: CronJobTrackerService,
     ) {
@@ -214,6 +216,105 @@ export class SchedulerService {
     //     this.logger.log('Daily cleanup job executed');
     //     // Add your logic here
     // }
+
+    /**
+     * Recurring Transaction Generation Cron Job
+     * Automatically generates transactions from active recurring transactions
+     * Runs daily at 1 AM by default, configurable via environment variable
+     */
+    @Cron('0 1 * * *', {
+        name: 'recurring-transaction-generation',
+    })
+    async handleRecurringTransactionGeneration() {
+        const startTime = Date.now();
+        const schedulerConfig = this.configService.get('scheduler', { infer: true });
+        const enabled = schedulerConfig?.recurringTransactionGeneration?.enabled ?? true;
+        if (!enabled) {
+            return;
+        }
+
+        try {
+            this.logger.log('Starting recurring transaction generation job...');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Find all recurring transactions that are due
+            const dueRecurringTransactions =
+                await this.financeRecurringTransactionsService.findDueRecurringTransactions(today);
+
+            this.logger.log(
+                `Found ${dueRecurringTransactions.length} recurring transaction(s) due for generation`,
+            );
+
+            let totalGenerated = 0;
+            let successCount = 0;
+            let failureCount = 0;
+            const errors: Array<{ id: string; error: string }> = [];
+
+            // Process each recurring transaction
+            for (const recurringTransaction of dueRecurringTransactions) {
+                try {
+                    const userId = recurringTransaction.userId.toString();
+                    const id = recurringTransaction._id.toString();
+
+                    // Generate transactions up to today
+                    const result = await this.financeRecurringTransactionsService.generateTransactions(
+                        userId,
+                        id,
+                        today,
+                    );
+
+                    totalGenerated += result.generatedCount;
+                    successCount++;
+
+                    if (result.generatedCount > 0) {
+                        this.logger.log(
+                            `Generated ${result.generatedCount} transaction(s) for recurring transaction ${id}`,
+                        );
+                    }
+                } catch (error) {
+                    failureCount++;
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                    const id = recurringTransaction._id.toString();
+                    errors.push({ id, error: errorMessage });
+                    this.logger.error(
+                        `Failed to generate transactions for recurring transaction ${id}: ${errorMessage}`,
+                        error instanceof Error ? error.stack : undefined,
+                    );
+                }
+            }
+
+            // Log summary
+            this.logger.log(
+                `Recurring transaction generation completed: ${totalGenerated} transaction(s) generated, ${successCount} succeeded, ${failureCount} failed`,
+            );
+
+            if (errors.length > 0) {
+                this.logger.warn(`Failed recurring transactions: ${JSON.stringify(errors)}`);
+            }
+
+            const duration = Date.now() - startTime;
+            this.cronJobTracker?.recordExecution(
+                'recurring-transaction-generation',
+                failureCount === 0,
+                failureCount > 0 ? `${failureCount} recurring transaction(s) failed` : undefined,
+                duration,
+            );
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const duration = Date.now() - startTime;
+            this.logger.error(
+                `Recurring transaction generation job failed: ${errorMessage}`,
+                error instanceof Error ? error.stack : undefined,
+            );
+            this.cronJobTracker?.recordExecution(
+                'recurring-transaction-generation',
+                false,
+                errorMessage,
+                duration,
+            );
+        }
+    }
 
     /**
      * Example: Custom cron expression (runs every hour at minute 0)

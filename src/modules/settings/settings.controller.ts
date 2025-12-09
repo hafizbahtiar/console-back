@@ -12,8 +12,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { SettingsService } from './settings.service';
 import { PreferencesService } from './services/preferences.service';
+import { CurrencyPreferencesService } from './services/currency-preferences.service';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { PreferencesResponseDto } from './dto/preferences-response.dto';
+import { UpdateCurrencyPreferencesDto, CurrencyPreferencesResponseDto, SupportedCurrenciesResponseDto } from './dto/currency-preferences.dto';
 import { successResponse } from '../../common/responses/response.util';
 import { SuccessResponse } from '../../common/responses/response.interface';
 import { plainToInstance } from 'class-transformer';
@@ -35,6 +37,7 @@ export class SettingsController {
     constructor(
         private readonly settingsService: SettingsService,
         private readonly preferencesService: PreferencesService,
+        private readonly currencyPreferencesService: CurrencyPreferencesService,
     ) { }
 
     /**
@@ -155,6 +158,45 @@ export class SettingsController {
 
         const preferencesDto = plainToInstance(PreferencesResponseDto, preferencesData);
         return successResponse(preferencesDto, 'Preferences reset to defaults successfully');
+    }
+
+    /**
+     * Get user's currency preferences
+     * Returns base currency and supported currencies
+     */
+    @Get('currency')
+    async getCurrencyPreferences(
+        @GetUser() user: any,
+    ): Promise<SuccessResponse<CurrencyPreferencesResponseDto>> {
+        const preferences = await this.currencyPreferencesService.getCurrencyPreferences(user.userId);
+        return successResponse(preferences, 'Currency preferences retrieved successfully');
+    }
+
+    /**
+     * Update user's currency preferences
+     * Updates base currency and/or supported currencies
+     */
+    @Patch('currency')
+    @HttpCode(HttpStatus.OK)
+    async updateCurrencyPreferences(
+        @GetUser() user: any,
+        @Body() updateDto: UpdateCurrencyPreferencesDto,
+    ): Promise<SuccessResponse<CurrencyPreferencesResponseDto>> {
+        const preferences = await this.currencyPreferencesService.updateCurrencyPreferences(
+            user.userId,
+            updateDto,
+        );
+        return successResponse(preferences, 'Currency preferences updated successfully');
+    }
+
+    /**
+     * Get list of supported currencies (system-wide)
+     * Returns all available currency codes with names and symbols
+     */
+    @Get('currencies')
+    async getSupportedCurrencies(): Promise<SuccessResponse<SupportedCurrenciesResponseDto>> {
+        const currencies = await this.currencyPreferencesService.getSupportedCurrencies();
+        return successResponse(currencies, 'Supported currencies retrieved successfully');
     }
 }
 

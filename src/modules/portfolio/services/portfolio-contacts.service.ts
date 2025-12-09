@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Contact, ContactDocument } from '../schemas/portfolio-contact.schema';
 import { CreateContactDto } from '../dto/contacts/create-contact.dto';
 import { UpdateContactDto } from '../dto/contacts/update-contact.dto';
+import { bulkSoftDelete } from '../util/bulk-operations.util';
 
 @Injectable()
 export class PortfolioContactsService {
@@ -75,8 +76,14 @@ export class PortfolioContactsService {
     }
 
     async remove(userId: string, id: string): Promise<void> {
-        await this.findOne(userId, id);
-        await this.contactModel.findByIdAndDelete(id).exec();
+        const contact = await this.findOne(userId, id);
+        // Soft delete
+        (contact as any).deletedAt = new Date();
+        await contact.save();
+    }
+
+    async bulkDelete(userId: string, ids: string[]): Promise<{ deletedCount: number; failedIds: string[] }> {
+        return bulkSoftDelete(this.contactModel, userId, ids);
     }
 
     async reorder(userId: string, contactIds: string[]): Promise<void> {

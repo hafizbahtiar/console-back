@@ -5,10 +5,10 @@ export type SessionDocument = Session & Document;
 
 @Schema({ timestamps: true })
 export class Session {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Account', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'Account', required: true })
   accountId: Types.ObjectId;
 
   @Prop({ required: true })
@@ -66,7 +66,9 @@ export class Session {
 
 export const SessionSchema = SchemaFactory.createForClass(Session);
 
-// Indexes (userId and accountId already indexed via index: true in @Prop)
+// Indexes
+SessionSchema.index({ userId: 1 }); // Standalone index for userId queries
+SessionSchema.index({ accountId: 1 }); // Standalone index for accountId queries
 SessionSchema.index({ userId: 1, isActive: 1 }); // Compound index
 SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index for auto-cleanup
 SessionSchema.index({ fcmToken: 1 });

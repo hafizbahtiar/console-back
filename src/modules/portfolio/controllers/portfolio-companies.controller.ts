@@ -15,6 +15,7 @@ import { PortfolioCompaniesService } from '../services/portfolio-companies.servi
 import { CreateCompanyDto } from '../dto/companies/create-company.dto';
 import { UpdateCompanyDto } from '../dto/companies/update-company.dto';
 import { CompanyResponseDto } from '../dto/companies/company-response.dto';
+import { BulkDeleteCompanyDto } from '../dto/companies/bulk-delete-company.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { plainToInstance } from 'class-transformer';
@@ -30,7 +31,7 @@ import { SuccessResponse, PaginatedResponse } from '../../../common/responses/re
 @Controller('portfolio/companies')
 @UseGuards(JwtAuthGuard)
 export class PortfolioCompaniesController {
-    constructor(private readonly portfolioCompaniesService: PortfolioCompaniesService) {}
+    constructor(private readonly portfolioCompaniesService: PortfolioCompaniesService) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -90,6 +91,16 @@ export class PortfolioCompaniesController {
             excludeExtraneousValues: true,
         });
         return successResponse(companyDto, 'Company updated successfully');
+    }
+
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    async bulkDelete(
+        @GetUser() user: any,
+        @Body() bulkDeleteDto: BulkDeleteCompanyDto,
+    ): Promise<SuccessResponse<{ deletedCount: number; failedIds: string[] }>> {
+        const result = await this.portfolioCompaniesService.bulkDelete(user.userId, bulkDeleteDto.ids);
+        return successResponse(result, `Successfully deleted ${result.deletedCount} company(ies)`);
     }
 
     @Delete(':id')
