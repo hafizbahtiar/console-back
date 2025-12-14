@@ -7,11 +7,10 @@
  * - Scheduler Process (fork mode, single instance)
  * 
  * Usage:
- *   pm2 start ecosystem.config.js          # Start all processes (uses NODE_ENV to determine mode)
- *   pm2 start ecosystem.config.js --only console-api    # Start only API (cluster in prod, single in dev)
- *   pm2 start ecosystem.config.js --only console-api-dev # Start dev API (single instance, watch enabled, on port 8001)
- *   pm2 start ecosystem.config.js --only console-worker # Start only worker
- *   pm2 start ecosystem.config.js --only console-scheduler # Start only scheduler
+ *   pm2 start ecosystem.config.js --env production    # Start all processes in production mode
+ *   pm2 start ecosystem.config.js --env development   # Start all processes in development mode
+ *   pm2 start ecosystem.config.js --only console-api --env production    # Start only API in production
+ *   pm2 start ecosystem.config.js --only console-api --env development   # Start only API in development
  *   pm2 stop all                            # Stop all processes
  *   pm2 restart all                         # Restart all processes
  *   pm2 logs                                # View all logs
@@ -23,23 +22,32 @@ module.exports = {
         {
             name: 'console-api',
             script: './dist/main.js',
-            // Use PM2's env_file to load environment variables
-            env_file: './.env',
-            // Conditional: 'max' in prod, 1 in dev
-            instances: process.env.NODE_ENV === 'production' ? 'max' : 1,
-            exec_mode: process.env.NODE_ENV === 'production' ? 'cluster' : 'fork',
-            // Enable watch in non-prod
-            watch: process.env.NODE_ENV !== 'production',
-            ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
-            env: {
+            // Production configuration (cluster mode)
+            env_production: {
                 NODE_ENV: 'production',
                 PROCESS_TYPE: 'api',
                 PORT: 5600,
+                instances: 'max',
+                exec_mode: 'cluster',
+                watch: false,
             },
+            // Development configuration (fork mode)
             env_development: {
                 NODE_ENV: 'development',
                 PROCESS_TYPE: 'api',
                 PORT: 8000,
+                instances: 1,
+                exec_mode: 'fork',
+                watch: true,
+            },
+            // Default to development if no env specified
+            env: {
+                NODE_ENV: 'development',
+                PROCESS_TYPE: 'api',
+                PORT: 8000,
+                instances: 1,
+                exec_mode: 'fork',
+                watch: true,
             },
             // Logging configuration with rotation
             error_file: './logs/api-error.log',
@@ -63,20 +71,34 @@ module.exports = {
             kill_timeout: 5000,
             wait_ready: true,
             listen_timeout: 10000,
+            ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
         },
         {
             name: 'console-worker',
             script: './dist/worker.main.js',
-            instances: 1, // Single instance for workers
-            exec_mode: 'fork',
-            env_file: './.env',
-            env: {
+            // Production configuration
+            env_production: {
                 NODE_ENV: 'production',
                 PROCESS_TYPE: 'worker',
+                instances: 1,
+                exec_mode: 'fork',
+                watch: false,
             },
+            // Development configuration
             env_development: {
                 NODE_ENV: 'development',
                 PROCESS_TYPE: 'worker',
+                instances: 1,
+                exec_mode: 'fork',
+                watch: true,
+            },
+            // Default to development
+            env: {
+                NODE_ENV: 'development',
+                PROCESS_TYPE: 'worker',
+                instances: 1,
+                exec_mode: 'fork',
+                watch: true,
             },
             // Logging configuration with rotation
             error_file: './logs/worker-error.log',
@@ -96,8 +118,6 @@ module.exports = {
             exp_backoff_restart_delay: 100,
             // Memory limits
             max_memory_restart: '1G',
-            // Watch mode (development only)
-            watch: process.env.NODE_ENV !== 'production',
             ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
             // Advanced options
             kill_timeout: 5000,
@@ -105,16 +125,29 @@ module.exports = {
         {
             name: 'console-scheduler',
             script: './dist/scheduler.main.js',
-            instances: 1, // Single instance for scheduler
-            exec_mode: 'fork',
-            env_file: './.env',
-            env: {
+            // Production configuration
+            env_production: {
                 NODE_ENV: 'production',
                 PROCESS_TYPE: 'scheduler',
+                instances: 1,
+                exec_mode: 'fork',
+                watch: false,
             },
+            // Development configuration
             env_development: {
                 NODE_ENV: 'development',
                 PROCESS_TYPE: 'scheduler',
+                instances: 1,
+                exec_mode: 'fork',
+                watch: true,
+            },
+            // Default to development
+            env: {
+                NODE_ENV: 'development',
+                PROCESS_TYPE: 'scheduler',
+                instances: 1,
+                exec_mode: 'fork',
+                watch: true,
             },
             // Logging configuration with rotation
             error_file: './logs/scheduler-error.log',
@@ -134,8 +167,6 @@ module.exports = {
             exp_backoff_restart_delay: 100,
             // Memory limits
             max_memory_restart: '512M',
-            // Watch mode (development only)
-            watch: process.env.NODE_ENV !== 'production',
             ignore_watch: ['node_modules', 'logs', 'dist', '.git'],
             // Advanced options
             kill_timeout: 5000,
