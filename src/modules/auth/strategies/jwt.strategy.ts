@@ -22,7 +22,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        // Try Authorization header first (standard)
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // Fallback to query parameter (for iframe support)
+        (request: any) => {
+          if (request?.query?.token) {
+            return request.query.token;
+          }
+          return null;
+        },
+      ]),
       ignoreExpiration: false,
       secretOrKey: secret,
     });

@@ -49,7 +49,7 @@ import { TransactionType } from '../schemas/finance-transaction.schema';
  */
 @Controller('finance/transactions')
 @UseGuards(JwtAuthGuard, OwnerOnlyGuard)
-@Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute for finance endpoints
+@Throttle({ default: { limit: 150, ttl: 60000 } }) // 150 requests per minute for finance endpoints (accounts for React Strict Mode)
 export class FinanceTransactionsController {
     constructor(
         private readonly financeTransactionsService: FinanceTransactionsService,

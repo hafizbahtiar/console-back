@@ -32,7 +32,9 @@ export class BullBoardService implements OnModuleInit, OnApplicationBootstrap {
     }
 
     onApplicationBootstrap() {
-        this.mountRouter();
+        // Router is now mounted in main.ts with authentication middleware
+        // No need to mount here anymore
+        this.logger.log('✅ Bull Board service ready (router will be mounted in main.ts with auth)');
     }
 
     /**
@@ -60,24 +62,11 @@ export class BullBoardService implements OnModuleInit, OnApplicationBootstrap {
 
     /**
      * Get Bull Board Express router
+     * 
+     * The router is mounted in main.ts with authentication middleware
      */
     getRouter() {
         return this.bullBoardAdapter.getRouter();
-    }
-
-    /**
-     * Mount the router on the app
-     * 
-     * Called in onModuleInit after setup
-     */
-    private mountRouter() {
-        if (globalThis.globalApp) {
-            const router = this.getRouter();
-            globalThis.globalApp.use('/api/v1/admin/queues/ui', router);
-            this.logger.log('✅ Bull Board router mounted at /api/v1/admin/queues/ui');
-        } else {
-            this.logger.error('❌ Global app not set - cannot mount Bull Board');
-        }
     }
 }
 

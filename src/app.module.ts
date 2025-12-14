@@ -93,7 +93,7 @@ const buildImports = () => {
             throttlers: [
               {
                 ttl: 60000, // 1 minute
-                limit: 120, // allow up to 120 requests/min (SPA-friendly)
+                limit: 300, // allow up to 300 requests/min (SPA-friendly, accounts for React Strict Mode double renders)
               },
             ],
             storage,

@@ -11,14 +11,17 @@ import { RedisService } from '../../redis/services/redis.service';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { successResponse } from '../../../common/responses/response.util';
+import { Throttle } from '@nestjs/throttler';
 
 /**
  * Admin Controller
  * 
  * Provides admin-only endpoints including queue dashboard.
+ * Admin endpoints have higher throttle limits since they're internal tools.
  */
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
+@Throttle({ default: { limit: 1000, ttl: 60000 } }) // 1000 requests per minute for admin endpoints
 export class AdminController {
     private readonly logger = new Logger(AdminController.name);
 
@@ -36,33 +39,48 @@ export class AdminController {
     /**
      * Queue Dashboard UI Root
      * GET /api/v1/admin/queues
-     * Redirects to Bull Board dashboard
+     * Delegates to Bull Board router for root path
      */
     @Get('queues')
     async queueDashboardRoot(@Req() req: Request, @Res() res: Response) {
-        // Redirect to Bull Board UI
-        res.redirect('/api/v1/admin/queues/ui');
-    }
-
-    /**
-     * Queue Dashboard - Catch all routes for Bull Board
-     * GET /api/v1/admin/queues/*
-     * 
-     * This route handles all Bull Board UI and API requests.
-     * Bull Board provides a web interface for monitoring and managing queues.
-     */
-    @All('queues/*')
-    async queueDashboard(@Req() req: Request, @Res() res: Response) {
-        // Bull Board handles all routes under /admin/queues/*
-        // The adapter's router will handle the request
         const router = this.bullBoardService.getRouter();
-        router(req, res);
+        
+        // For root /queues, use relative path '/'
+        const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+        const adjustedUrl = '/' + queryString;
+        
+        const adjustedReq = {
+            ...req,
+            path: '/',
+            url: adjustedUrl,
+            originalUrl: adjustedUrl,
+            baseUrl: '/api/v1/admin/queues',
+        } as Request;
+        
+        this.logger.debug('Bull Board: Handling root request', {
+            adjustedPath: '/',
+            adjustedUrl,
+            method: req.method,
+            query: req.query,
+        });
+        
+        router(adjustedReq, res, () => {
+            if (!res.headersSent) {
+                res.status(404).json({
+                    statusCode: 404,
+                    message: 'Not Found',
+                    error: 'Not Found',
+                });
+            }
+        });
     }
 
     /**
      * Queue Statistics
      * GET /api/v1/admin/queues/stats
+     * Must be defined BEFORE the catch-all route to avoid route conflicts
      */
+    @Throttle({ default: { limit: 1000, ttl: 60000 } })
     @Get('queues/stats')
     async getQueueStats() {
         const stats = await Promise.all([
@@ -89,31 +107,9 @@ export class AdminController {
     }
 
     /**
-     * Get email queue statistics
-     */
-    private async getEmailQueueStats() {
-        const [waiting, active, completed, failed, delayed] = await Promise.all([
-            this.emailQueue.getWaitingCount(),
-            this.emailQueue.getActiveCount(),
-            this.emailQueue.getCompletedCount(),
-            this.emailQueue.getFailedCount(),
-            this.emailQueue.getDelayedCount(),
-        ]);
-
-        return {
-            name: QueueNames.EMAIL,
-            waiting,
-            active,
-            completed,
-            failed,
-            delayed,
-            total: waiting + active + completed + failed + delayed,
-        };
-    }
-
-    /**
      * Retry a failed job
      * POST /api/v1/admin/queues/:queueName/jobs/:jobId/retry
+     * Must be defined BEFORE the catch-all route to avoid route conflicts
      */
     @Post('queues/:queueName/jobs/:jobId/retry')
     async retryJob(
@@ -143,6 +139,7 @@ export class AdminController {
     /**
      * Clean completed/failed jobs from a queue
      * DELETE /api/v1/admin/queues/:queueName/jobs/clean
+     * Must be defined BEFORE the catch-all route to avoid route conflicts
      */
     @Delete('queues/:queueName/jobs/clean')
     async cleanJobs(
@@ -179,6 +176,7 @@ export class AdminController {
     /**
      * Get failed jobs for a queue
      * GET /api/v1/admin/queues/:queueName/jobs/failed
+     * Must be defined BEFORE the catch-all route to avoid route conflicts
      */
     @Get('queues/:queueName/jobs/failed')
     async getFailedJobs(
@@ -216,6 +214,7 @@ export class AdminController {
     /**
      * Get job history for a queue
      * GET /api/v1/admin/queues/:queueName/jobs/history
+     * Must be defined BEFORE the catch-all route to avoid route conflicts
      */
     @Get('queues/:queueName/jobs/history')
     async getJobHistory(
@@ -277,6 +276,90 @@ export class AdminController {
             'Job history retrieved successfully',
         );
     }
+
+    /**
+     * Queue Dashboard - Catch all routes for Bull Board
+     * GET /api/v1/admin/queues/*
+     * 
+     * This route handles all Bull Board UI and API requests.
+     * Bull Board provides a web interface for monitoring and managing queues.
+     * 
+     * NOTE: This catch-all route must be defined AFTER ALL specific routes
+     * (queues/stats, queues/:queueName/jobs/*, etc.) to avoid route conflicts.
+     * 
+     * The JwtAuthGuard now supports token in query parameter for iframe authentication.
+     */
+    @All('queues/*')
+    async queueDashboard(@Req() req: Request, @Res() res: Response) {
+        // Get the Bull Board router
+        const router = this.bullBoardService.getRouter();
+        
+        // Bull Board expects paths relative to its basePath (/api/v1/admin/queues)
+        // So /api/v1/admin/queues/ui should become /ui
+        const basePath = '/api/v1/admin/queues';
+        const fullPath = req.path;
+        const relativePath = fullPath.replace(basePath, '') || '/';
+        
+        // Preserve query string
+        const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+        const adjustedUrl = relativePath + queryString;
+        
+        // Create a new request object with adjusted path for Bull Board
+        const adjustedReq = Object.create(req);
+        adjustedReq.url = adjustedUrl;
+        adjustedReq.originalUrl = adjustedUrl;
+        adjustedReq.baseUrl = '';
+        // Don't set path since it's read-only; Bull Board may use url instead
+        
+        this.logger.debug('Bull Board: Adjusted request for router', {
+            originalPath: fullPath,
+            relativePath,
+            adjustedUrl,
+            adjustedPath: relativePath,
+            method: req.method,
+            query: req.query,
+        });
+        
+        // Call the Bull Board router
+        router(adjustedReq, res, () => {
+            this.logger.warn('Bull Board router did not handle the request - falling to 404', {
+                relativePath,
+                adjustedUrl,
+                method: req.method,
+            });
+            if (!res.headersSent) {
+                res.status(404).json({
+                    statusCode: 404,
+                    message: 'Not Found',
+                    error: 'Not Found',
+                });
+            }
+        });
+    }
+
+    /**
+     * Get email queue statistics
+     */
+    private async getEmailQueueStats() {
+        const [waiting, active, completed, failed, delayed] = await Promise.all([
+            this.emailQueue.getWaitingCount(),
+            this.emailQueue.getActiveCount(),
+            this.emailQueue.getCompletedCount(),
+            this.emailQueue.getFailedCount(),
+            this.emailQueue.getDelayedCount(),
+        ]);
+
+        return {
+            name: QueueNames.EMAIL,
+            waiting,
+            active,
+            completed,
+            failed,
+            delayed,
+            total: waiting + active + completed + failed + delayed,
+        };
+    }
+
 
     /**
      * Get all cron job statuses

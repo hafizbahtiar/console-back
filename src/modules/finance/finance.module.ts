@@ -90,7 +90,7 @@ import { SettingsModule } from '../settings/settings.module';
         ThrottlerModule.forRoot([
             {
                 ttl: 60000, // 1 minute
-                limit: 120, // more generous limit for finance endpoints
+                limit: 300, // more generous limit for finance endpoints (accounts for React Strict Mode)
             },
         ]),
     ],

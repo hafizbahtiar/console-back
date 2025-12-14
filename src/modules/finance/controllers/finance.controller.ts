@@ -39,7 +39,7 @@ import { CalendarResponseDto } from '../dto/analytics/calendar-response.dto';
  */
 @Controller('finance')
 @UseGuards(JwtAuthGuard, OwnerOnlyGuard)
-@Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute for finance endpoints
+@Throttle({ default: { limit: 150, ttl: 60000 } }) // 150 requests per minute for finance endpoints (accounts for React Strict Mode)
 export class FinanceController {
     constructor(private readonly financeAnalyticsService: FinanceAnalyticsService) { }
 
