@@ -23,6 +23,8 @@ module.exports = {
         {
             name: 'console-api',
             script: './dist/main.js',
+            // Use PM2's env_file to load environment variables
+            env_file: './.env',
             // Conditional: 'max' in prod, 1 in dev
             instances: process.env.NODE_ENV === 'production' ? 'max' : 1,
             exec_mode: process.env.NODE_ENV === 'production' ? 'cluster' : 'fork',
@@ -32,7 +34,7 @@ module.exports = {
             env: {
                 NODE_ENV: 'production',
                 PROCESS_TYPE: 'api',
-                PORT: 8000,
+                PORT: 5600,
             },
             env_development: {
                 NODE_ENV: 'development',
@@ -67,6 +69,7 @@ module.exports = {
             script: './dist/worker.main.js',
             instances: 1, // Single instance for workers
             exec_mode: 'fork',
+            env_file: './.env',
             env: {
                 NODE_ENV: 'production',
                 PROCESS_TYPE: 'worker',
@@ -104,6 +107,7 @@ module.exports = {
             script: './dist/scheduler.main.js',
             instances: 1, // Single instance for scheduler
             exec_mode: 'fork',
+            env_file: './.env',
             env: {
                 NODE_ENV: 'production',
                 PROCESS_TYPE: 'scheduler',
