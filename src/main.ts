@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { IoAdapter } from '@nestjs/platform-socket.io';
@@ -13,14 +12,8 @@ import { getHelmetConfig } from './config/helmet.config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { BullBoardService } from './modules/admin/services/bull-board.service';
-import { AdminModule } from './modules/admin/admin.module';
-import { JwtService } from '@nestjs/jwt';
-import { UsersService } from './modules/users/users.service';
-import type { Request, Response, NextFunction } from 'express';
 
 // Global app reference for services (set after creation)
-let globalApp: NestExpressApplication | undefined;
 
 /**
  * API Server Entry Point
@@ -170,127 +163,6 @@ async function bootstrap() {
   app.use(helmet(helmetConfig));
 
   logger.log(`🛡️  Security headers configured (${nodeEnv} environment)`);
-
-  // Create authentication middleware for Bull Board
-  const jwtService = app.get(JwtService);
-  const usersService = app.get(UsersService);
-  const jwtConfig = configService.get('jwt', { infer: true });
-
-  const bullBoardAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // Extract token from Authorization header or query parameter (for iframe support)
-      let token: string | null = null;
-
-      // Try Authorization header first
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-        logger.debug('Bull Board: Token extracted from Authorization header');
-      }
-
-      // Fallback to query parameter (for iframe)
-      if (!token && req.query.token) {
-        token = req.query.token as string;
-        logger.debug('Bull Board: Token extracted from query parameter');
-      }
-
-      if (!token) {
-        logger.warn('Bull Board: No token provided', {
-          hasAuthHeader: !!authHeader,
-          hasQueryToken: !!req.query.token,
-          url: req.url,
-        });
-        return res.status(401).json({
-          statusCode: 401,
-          message: 'Unauthorized - No token provided',
-          error: 'Unauthorized',
-        });
-      }
-
-      logger.debug('Bull Board: Verifying token', {
-        tokenLength: token.length,
-        tokenPreview: `${token.substring(0, 20)}...`,
-      });
-
-      // Verify token
-      const payload = await jwtService.verifyAsync(token, {
-        secret: jwtConfig?.accessSecret,
-      });
-
-      logger.debug('Bull Board: Token verified', {
-        userId: payload.sub,
-        email: payload.email,
-        role: payload.role,
-        type: payload.type,
-      });
-
-      if (payload.type !== 'access') {
-        logger.warn('Bull Board: Invalid token type', { type: payload.type });
-        return res.status(401).json({
-          statusCode: 401,
-          message: 'Unauthorized - Invalid token type',
-          error: 'Unauthorized',
-        });
-      }
-
-      // Check if user exists and is active
-      const user = await usersService.findById(payload.sub);
-      if (!user || !user.isActive) {
-        logger.warn('Bull Board: User not found or inactive', {
-          userId: payload.sub,
-          userExists: !!user,
-          isActive: user?.isActive,
-        });
-        return res.status(401).json({
-          statusCode: 401,
-          message: 'Unauthorized - User not found or inactive',
-          error: 'Unauthorized',
-        });
-      }
-
-      // Check if user has owner role
-      if (user.role !== 'owner') {
-        logger.warn('Bull Board: User does not have owner role', {
-          userId: payload.sub,
-          role: user.role,
-        });
-        return res.status(403).json({
-          statusCode: 403,
-          message: 'Forbidden - Owner role required',
-          error: 'Forbidden',
-        });
-      }
-
-      logger.debug('Bull Board: Authentication successful', {
-        userId: user._id.toString(),
-        email: payload.email,
-        role: user.role,
-      });
-
-      // Attach user info to request for Bull Board
-      (req as any).user = {
-        userId: user._id.toString(),
-        email: payload.email,
-        role: user.role,
-      };
-
-      next();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      logger.error(`Bull Board authentication failed: ${errorMessage}`, {
-        error: errorMessage,
-        stack: errorStack,
-        url: req.url,
-        hasQueryToken: !!req.query.token,
-      });
-      return res.status(401).json({
-        statusCode: 401,
-        message: 'Unauthorized - Invalid token',
-        error: 'Unauthorized',
-      });
-    }
-  };
 
   // Bull Board router is handled by NestJS controller route @All('queues/*')
   // The authentication is handled by JwtAuthGuard which supports query parameters
